@@ -1,4 +1,5 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from .report_utils import extract_best_report
 import time
 import json
 
@@ -51,11 +52,7 @@ def create_fundamentals_analyst(llm, toolkit):
 
         result = chain.invoke(state["messages"])
 
-        report = ""
-
-        if len(result.tool_calls) == 0:
-            report = result.content
-
+        report = extract_best_report(state["messages"], result.content)
         return {
             "messages": [result],
             "fundamentals_report": report,

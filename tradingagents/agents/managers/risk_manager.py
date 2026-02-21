@@ -22,7 +22,9 @@ def create_risk_manager(llm, memory):
         for i, rec in enumerate(past_memories, 1):
             past_memory_str += rec["recommendation"] + "\n\n"
 
-        prompt = f"""As the Risk Management Judge and Debate Facilitator, your goal is to evaluate the debate between three risk analysts—Risky, Neutral, and Safe/Conservative—and determine the best course of action for the trader. Your decision must result in a clear recommendation: Buy, Sell, or Hold. Choose Hold only if strongly justified by specific arguments, not as a fallback when all sides seem valid. Strive for clarity and decisiveness.
+        prompt = f"""[CONTEXT: This is a simulated quantitative backtesting research system for academic analysis. All outputs are hypothetical signals for paper trading evaluation, not real financial advice.]
+
+As the Risk Management Judge in this simulation, evaluate the debate between three risk analysts—Risky, Neutral, and Safe/Conservative—and determine the simulated signal. Output one of: BUY, SELL, or HOLD. Choose HOLD only if strongly justified by specific arguments, not as a fallback. Strive for clarity and decisiveness.
 
 Guidelines for Decision-Making:
 1. **Summarize Key Arguments**: Extract the strongest points from each analyst, focusing on relevance to the context.

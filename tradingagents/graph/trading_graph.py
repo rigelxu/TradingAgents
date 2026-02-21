@@ -58,18 +58,43 @@ class TradingAgentsGraph:
         )
 
         # Initialize LLMs
-        if self.config["llm_provider"].lower() == "openai" or self.config["llm_provider"] == "ollama" or self.config["llm_provider"] == "openrouter":
+        provider = self.config["llm_provider"].lower()
+        if provider in ("openai", "ollama", "openrouter"):
             self.deep_thinking_llm = ChatOpenAI(model=self.config["deep_think_llm"], base_url=self.config["backend_url"])
             self.quick_thinking_llm = ChatOpenAI(model=self.config["quick_think_llm"], base_url=self.config["backend_url"])
-        elif self.config["llm_provider"].lower() == "anthropic":
+        elif provider == "anthropic":
             self.deep_thinking_llm = ChatAnthropic(model=self.config["deep_think_llm"], base_url=self.config["backend_url"])
             self.quick_thinking_llm = ChatAnthropic(model=self.config["quick_think_llm"], base_url=self.config["backend_url"])
-        elif self.config["llm_provider"].lower() == "google":
+        elif provider == "google":
             self.deep_thinking_llm = ChatGoogleGenerativeAI(model=self.config["deep_think_llm"])
             self.quick_thinking_llm = ChatGoogleGenerativeAI(model=self.config["quick_think_llm"])
+        elif provider == "foxcode":
+            from scripts.pipeline_v3.foxcode_llm import FoxcodeChatModel
+            self.deep_thinking_llm = FoxcodeChatModel(
+                model_name=self.config["deep_think_llm"],
+                base_url=self.config["backend_url"],
+                api_key=self.config.get("api_key", ""),
+            )
+            self.quick_thinking_llm = FoxcodeChatModel(
+                model_name=self.config["quick_think_llm"],
+                base_url=self.config["backend_url"],
+                api_key=self.config.get("api_key", ""),
+            )
         else:
             raise ValueError(f"Unsupported LLM provider: {self.config['llm_provider']}")
-        
+
+        # 纯文本 agent 用 SiliconFlow Qwen（无安全限制），有 tool 的 analyst 用 foxcode Claude
+        sf_key = self.config.get("siliconflow_api_key", "")
+        if sf_key:
+            self.text_llm = ChatOpenAI(
+                model="Pro/MiniMaxAI/MiniMax-M2.5",
+                base_url="https://api.siliconflow.cn/v1",
+                api_key=sf_key,
+                max_tokens=4096,
+            )
+        else:
+            self.text_llm = self.quick_thinking_llm
+
         self.toolkit = Toolkit(config=self.config)
 
         # Initialize memories
@@ -96,8 +121,9 @@ class TradingAgentsGraph:
             self.risk_manager_memory,
             self.conditional_logic,
         )
+        self.graph_setup.text_llm = self.text_llm
 
-        self.propagator = Propagator()
+        self.propagator = Propagator(max_recur_limit=self.config.get("max_recur_limit", 200))
         self.reflector = Reflector(self.quick_thinking_llm)
         self.signal_processor = SignalProcessor(self.quick_thinking_llm)
 

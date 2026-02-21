@@ -1,6 +1,22 @@
 # TradingAgents/graph/conditional_logic.py
 
 from tradingagents.agents.utils.agent_states import AgentState
+from langchain_core.messages import ToolMessage
+
+MAX_TOOL_CALLS_PER_ANALYST = 8
+
+
+def _count_recent_tool_calls(messages):
+    """Count consecutive tool call rounds from the end of messages."""
+    count = 0
+    for msg in reversed(messages):
+        if isinstance(msg, ToolMessage):
+            count += 1
+        elif hasattr(msg, 'tool_calls') and msg.tool_calls:
+            continue
+        else:
+            break
+    return count
 
 
 class ConditionalLogic:
@@ -11,37 +27,24 @@ class ConditionalLogic:
         self.max_debate_rounds = max_debate_rounds
         self.max_risk_discuss_rounds = max_risk_discuss_rounds
 
-    def should_continue_market(self, state: AgentState):
-        """Determine if market analysis should continue."""
+    def _should_continue_analyst(self, state, tools_node, clear_node):
         messages = state["messages"]
         last_message = messages[-1]
-        if last_message.tool_calls:
-            return "tools_market"
-        return "Msg Clear Market"
+        if last_message.tool_calls and _count_recent_tool_calls(messages) < MAX_TOOL_CALLS_PER_ANALYST:
+            return tools_node
+        return clear_node
+
+    def should_continue_market(self, state: AgentState):
+        return self._should_continue_analyst(state, "tools_market", "Msg Clear Market")
 
     def should_continue_social(self, state: AgentState):
-        """Determine if social media analysis should continue."""
-        messages = state["messages"]
-        last_message = messages[-1]
-        if last_message.tool_calls:
-            return "tools_social"
-        return "Msg Clear Social"
+        return self._should_continue_analyst(state, "tools_social", "Msg Clear Social")
 
     def should_continue_news(self, state: AgentState):
-        """Determine if news analysis should continue."""
-        messages = state["messages"]
-        last_message = messages[-1]
-        if last_message.tool_calls:
-            return "tools_news"
-        return "Msg Clear News"
+        return self._should_continue_analyst(state, "tools_news", "Msg Clear News")
 
     def should_continue_fundamentals(self, state: AgentState):
-        """Determine if fundamentals analysis should continue."""
-        messages = state["messages"]
-        last_message = messages[-1]
-        if last_message.tool_calls:
-            return "tools_fundamentals"
-        return "Msg Clear Fundamentals"
+        return self._should_continue_analyst(state, "tools_fundamentals", "Msg Clear Fundamentals")
 
     def should_continue_debate(self, state: AgentState) -> str:
         """Determine if debate should continue."""
