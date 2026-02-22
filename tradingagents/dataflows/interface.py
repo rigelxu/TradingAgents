@@ -705,11 +705,19 @@ def get_YFin_data(
 def _foxcode_llm_call(prompt, config):
     """用 requests 直调 foxcode Anthropic API"""
     import requests as _req
-    api_key = config.get("api_key", "") or os.environ.get("ANTHROPIC_AUTH_TOKEN", "")
+    import json as _json
+    from pathlib import Path
+    api_key = os.environ.get("ANTHROPIC_AUTH_TOKEN", "")
+    if not api_key:
+        sf = Path.home() / ".claude" / "settings.json"
+        if sf.exists():
+            api_key = _json.loads(sf.read_text(encoding="utf-8")).get("env", {}).get("ANTHROPIC_AUTH_TOKEN", "")
+    base_url = "https://code.newcli.com/claude/aws"
+    model = "claude-sonnet-4-6"
     resp = _req.post(
-        f"{config['backend_url']}/v1/messages",
+        f"{base_url}/v1/messages",
         headers={"x-api-key": api_key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-        json={"model": config["quick_think_llm"], "max_tokens": 4096, "temperature": 0.3,
+        json={"model": model, "max_tokens": 4096, "temperature": 0.3,
               "messages": [{"role": "user", "content": prompt}]},
         timeout=120,
     )
