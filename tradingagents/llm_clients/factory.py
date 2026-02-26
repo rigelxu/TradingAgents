@@ -34,6 +34,17 @@ def create_llm_client(
     if provider_lower == "xai":
         return OpenAIClient(model, base_url, provider="xai", **kwargs)
 
+    if provider_lower == "foxcode":
+        import os
+        foxcode_base = base_url or os.environ.get(
+            "FOXCODE_BASE_URL", "https://code.newcli.com/claude/aws/v1"
+        )
+        foxcode_key = os.environ.get("FOXCODE_API_KEY", "")
+        return OpenAIClient(
+            model, foxcode_base, provider="foxcode",
+            api_key=foxcode_key, **kwargs,
+        )
+
     if provider_lower == "anthropic":
         return AnthropicClient(model, base_url, **kwargs)
 
